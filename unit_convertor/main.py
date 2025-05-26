@@ -4,31 +4,29 @@ from datetime import datetime
 # Set up the page configuration
 st.set_page_config("Unit Converter", page_icon="🟠", layout="centered")
 
-# Conversion factors
+# Accurate conversion factors — ALL in terms of base unit per unit
 conversion_factors = {
     "Length": {
         "meters (📏)": 1,
-        "kilometers (🛤️)": 0.001,
-        "miles (🛣️)": 0.000621371,
-        "feet (👣)": 3.28084
+        "kilometers (🛤️)": 1000,
+        "miles (🛣️)": 1609.34,
+        "feet (👣)": 0.3048
     },
     "Weight": {
         "grams (⚖️)": 1,
-        "kilograms (🏋️‍♂️)": 0.001,
-        "pounds (🐂)": 0.00220462
+        "kilograms (🏋️‍♂️)": 1000,
+        "pounds (🐂)": 453.592
     },
     "Volume": {
         "liters (🧴)": 1,
-        "milliliters (💦)": 1000,
-        "gallons (🛢️)": 0.264172
+        "milliliters (💦)": 0.001,
+        "gallons (🛢️)": 3.78541
     },
     "Temperature": {
-        "Celsius (🌡️) to Fahrenheit (🔥)": lambda x: (x * 9/5) + 32,
-        "Celsius (🌡️) to Kelvin (❄️)": lambda x: x + 273.15,
-        "Fahrenheit (🔥) to Celsius (🌡️)": lambda x: (x - 32) * 5/9,
-        "Fahrenheit (🔥) to Kelvin (❄️)": lambda x: (x - 32) * 5/9 + 273.15,
-        "Kelvin (❄️) to Celsius (🌡️)": lambda x: x - 273.15,
-        "Kelvin (❄️) to Fahrenheit (🔥)": lambda x: (x - 273.15) * 9/5 + 32,
+        # handled separately in logic
+        "Celsius (🌡️)": None,
+        "Fahrenheit (🔥)": None,
+        "Kelvin (❄️)": None
     },
     "Time": {
         "seconds (⏳)": 1,
@@ -38,27 +36,48 @@ conversion_factors = {
     },
     "Area": {
         "square meters (📐)": 1,
-        "square feet (🏠)": 10.7639,
-        "acres (🌿)": 0.000247105
+        "square feet (🏠)": 0.092903,
+        "acres (🌿)": 4046.86
     },
     "Pressure": {
         "Pascals (💨)": 1,
-        "Bar (🏗️)": 1e-5,
-        "PSI (⚙️)": 0.000145038
+        "Bar (🏗️)": 100000,
+        "PSI (⚙️)": 6894.76
     },
     "Speed": {
         "m/s (🏃‍♂️)": 1,
-        "km/h (🚗💨)": 3.6,
-        "mph (🏎️💨)": 2.23694
+        "km/h (🚗💨)": 1000 / 3600,     # = 0.277778
+        "mph (🏎️💨)": 1609.34 / 3600   # = 0.44704
     },
     "Energy": {
         "Joules (⚡)": 1,
-        "Calories (🍕)": 0.239006,
-        "kWh (🔋)": 2.7778e-7
+        "Calories (🍕)": 4.184,
+        "kWh (🔋)": 3.6e6
     },
 }
 
-# Custom CSS for styling the app
+# Temperature conversion map
+def convert_temperature(value, from_unit, to_unit):
+    if from_unit == to_unit:
+        return value
+    if from_unit == "Celsius (🌡️)":
+        if to_unit == "Fahrenheit (🔥)":
+            return (value * 9/5) + 32
+        elif to_unit == "Kelvin (❄️)":
+            return value + 273.15
+    elif from_unit == "Fahrenheit (🔥)":
+        if to_unit == "Celsius (🌡️)":
+            return (value - 32) * 5/9
+        elif to_unit == "Kelvin (❄️)":
+            return (value - 32) * 5/9 + 273.15
+    elif from_unit == "Kelvin (❄️)":
+        if to_unit == "Celsius (🌡️)":
+            return value - 273.15
+        elif to_unit == "Fahrenheit (🔥)":
+            return (value - 273.15) * 9/5 + 32
+    return "Unsupported conversion"
+
+# Custom CSS
 st.markdown(
     """
     <style>
@@ -128,6 +147,64 @@ st.markdown(
         font-size: 16px;
         margin-bottom: 10px;
     }
+    input[type="number"] {
+        color: white !important;
+        background-color: #1f1f1f !important;
+        border: 1px solid #FFA500 !important;
+        padding: 8px 12px !important;
+        border-radius: 5px !important;
+        font-size: 16px !important;
+        transition: 0.3s;
+    }
+    input[type="number"]:focus {
+        outline: none !important;
+        border-color: #FFA500 !important;
+        box-shadow: 0 0 8px 2px #FFA500;
+        color: white !important;
+        background-color: #121212 !important;
+    }
+    div[role="combobox"] > div > div > div > select {
+        color: white !important;
+        background-color: #1f1f1f !important;
+        border: 1px solid #FFA500 !important;
+        border-radius: 5px !important;
+        font-size: 16px !important;
+        padding: 8px 12px !important;
+        transition: 0.3s;
+    }
+    div[role="combobox"] > div > div > div > select:focus {
+        outline: none !important;
+        border-color: #FFA500 !important;
+        box-shadow: 0 0 8px 2px #FFA500;
+        background-color: #121212 !important;
+        color: white !important;
+    }
+    label {
+        color: white !important;
+        font-weight: 600;
+        font-size: 16px;
+    }
+    input::placeholder {
+        color: #ccc !important;
+    }
+    div.stButton > button {
+        background-color: #FF8C00 !important;
+        color: white !important;
+        font-size: 16px !important;
+        border-radius: 5px !important;
+        border: none !important;
+        transition: 0.3s !important;
+        padding: 10px 20px !important;
+        width: 100% !important;
+        margin-top: 14px !important;
+    }
+    div.stButton > button:hover {
+        background-color: #FFA500 !important;
+        transform: scale(1.05) !important;
+        color: white !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -135,39 +212,34 @@ st.markdown(
 
 def unit_convert(value, category, unit_from, unit_to):
     if category == "Temperature":
-        key = f"{unit_from} to {unit_to}"
-        try:
-            if key in conversion_factors["Temperature"]:
-                return conversion_factors["Temperature"][key](value)
-            else:
-                return "Conversion not supported"
-        except Exception as e:
-            return f"Error in conversion: {str(e)}"
-    else:
-        if category in conversion_factors and unit_from in conversion_factors[category] and unit_to in conversion_factors[category]:
-            return value * (conversion_factors[category][unit_from] / conversion_factors[category][unit_to])
-        else:
-            return "Conversion not supported"
+        return convert_temperature(value, unit_from, unit_to)
+    try:
+        factor_from = conversion_factors[category][unit_from]
+        factor_to = conversion_factors[category][unit_to]
+        return value * (factor_from / factor_to)
+    except Exception as e:
+        return f"Conversion error: {e}"
 
+# UI rendering
 st.markdown(f"<div class='custom-title'>Unit Converter App</div>", unsafe_allow_html=True)
 st.markdown(f"<div class='custom-subheader'>Convert between different units easily! 🟠</div>", unsafe_allow_html=True)
 
 category = st.selectbox("Select Conversion Type", list(conversion_factors.keys()))
 
-# Handle temperature units differently because conversion keys are different
+col1, col2 = st.columns(2)
+
 if category == "Temperature":
-    temp_units = ["Celsius (🌡️)", "Fahrenheit (🔥)", "Kelvin (❄️)"]
-    col1, col2 = st.columns(2)
+    temp_units = list(conversion_factors["Temperature"].keys())
     with col1:
         unit_from = st.selectbox("Convert from", temp_units)
     with col2:
         unit_to = st.selectbox("Convert to", [u for u in temp_units if u != unit_from])
 else:
-    col1, col2 = st.columns(2)
+    units = list(conversion_factors[category].keys())
     with col1:
-        unit_from = st.selectbox("Convert from", list(conversion_factors[category].keys()))
+        unit_from = st.selectbox("Convert from", units)
     with col2:
-        unit_to = st.selectbox("Convert to", [u for u in conversion_factors[category].keys() if u != unit_from])
+        unit_to = st.selectbox("Convert to", [u for u in units if u != unit_from])
 
 value = st.number_input("Enter a value to convert", min_value=1.0, step=1.0)
 
@@ -177,21 +249,19 @@ if "history" not in st.session_state:
 if st.button("🔄 Convert"):
     result = unit_convert(value, category, unit_from, unit_to)
     if isinstance(result, str):
-        # If error message returned
         st.error(result)
     else:
         precision = 2 if category == "Temperature" else 5
         st.markdown(f"<div class='custom-result'>Converted Value: {result:.{precision}f} {unit_to}</div>", unsafe_allow_html=True)
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        conversion_record = f"{timestamp}: {value} {unit_from} ➝ {result:.{precision}f} {unit_to}"
-        st.session_state.history.append(conversion_record)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record = f"{timestamp} | {value} {unit_from} → {result:.{precision}f} {unit_to} ({category})"
+        st.session_state.history.append(record)
 
-st.markdown(f"<div class='Conversion_history'>📜 Conversion History</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='Conversion_history'>Conversion History</div>", unsafe_allow_html=True)
 if st.session_state.history:
     for record in st.session_state.history[-5:]:
         st.markdown(f"<div class='record_history'>{record}</div>", unsafe_allow_html=True)
     if st.button("❌ Clear History"):
         st.session_state.history.clear()
-        st.experimental_rerun()
 else:
     st.markdown("<div class='empty_msg'>Your conversion history is empty.</div>", unsafe_allow_html=True)
